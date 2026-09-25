@@ -1,108 +1,104 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ScrollView, SafeAreaView, Platform } from 'react-native';
+import { StyleSheet, View, SafeAreaView, Platform, Text } from 'react-native';
 
-import { Header } from './src/components/Header';
-import { BroadcastBanner } from './src/components/BroadcastBanner';
-import { WagonWheelWidget } from './src/components/WagonWheelWidget';
-import { WinPredictorWidget } from './src/components/WinPredictorWidget';
-import { ChaseWormWidget } from './src/components/ChaseWormWidget';
-import { H2HBattleWidget } from './src/components/H2HBattleWidget';
-import { CommentaryFeed } from './src/components/CommentaryFeed';
-import { Footer } from './src/components/Footer';
-import { ScoringModal } from './src/components/ScoringModal';
+import { Header } from './src/components/navigation/Header';
+import { Footer } from './src/components/navigation/Footer';
+import { MobileBottomNav } from './src/components/navigation/MobileBottomNav';
+import { GlobalSearchModal } from './src/components/common/GlobalSearchModal';
+import { NotificationDrawer } from './src/components/common/NotificationDrawer';
+import { AuthModal } from './src/components/common/AuthModal';
+import { COLORS } from './src/theme';
+import { NavigationRoute, UserRole } from './src/types';
+
+import { HomePage } from './src/components/pages/HomePage';
+import { LiveMatchesPage } from './src/components/pages/LiveMatchesPage';
+import { MatchCentrePage } from './src/components/pages/MatchCentrePage';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>('live-matches');
-  const [scoringModalVisible, setScoringModalVisible] = useState<boolean>(false);
+  const [currentRoute, setCurrentRoute] = useState<NavigationRoute>('HOME');
+  const [selectedParamId, setSelectedParamId] = useState<string | undefined>(undefined);
+  const [userRole, setUserRole] = useState<UserRole>('ADMIN');
 
-  const [scoreData, setScoreData] = useState({
-    teamA: 'Sivakasi Strikers',
-    teamAScore: '174/6',
-    teamAOvers: '20.0',
-    teamB: 'Virudhunagar Kings',
-    teamBScore: '168/5',
-    teamBOvers: '19.2',
-    target: 175,
-    neededRuns: 7,
-    neededBalls: 4,
-    striker: 'S. Muthukumar',
-    strikerRuns: 64,
-    strikerBalls: 38,
-    nonStriker: 'R. Anandhan',
-    nonStrikerRuns: 18,
-    nonStrikerBalls: 11,
-    bowler: 'K. Vetrivel',
-    bowlerWickets: 2,
-    bowlerRuns: 35,
-    bowlerOvers: 3.2,
-  });
+  // Modals state
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [notificationsVisible, setNotificationsVisible] = useState(false);
+  const [authVisible, setAuthVisible] = useState(false);
 
-  const handleUpdateScore = (ballRun: number, isWicket = false) => {
-    setScoreData((prev) => {
-      const currentRuns = parseInt(prev.teamBScore.split('/')[0]) + ballRun;
-      const currentWickets = isWicket
-        ? parseInt(prev.teamBScore.split('/')[1]) + 1
-        : parseInt(prev.teamBScore.split('/')[1]);
+  const handleNavigate = (route: NavigationRoute, paramId?: string) => {
+    setCurrentRoute(route);
+    setSelectedParamId(paramId);
+  };
 
-      const neededRuns = Math.max(0, prev.target - currentRuns);
-      const neededBalls = Math.max(0, prev.neededBalls - 1);
-
-      return {
-        ...prev,
-        teamBScore: `${currentRuns}/${currentWickets}`,
-        neededRuns,
-        neededBalls,
-        strikerRuns: prev.strikerRuns + ballRun,
-        strikerBalls: prev.strikerBalls + 1,
-      };
-    });
+  const renderContent = () => {
+    switch (currentRoute) {
+      case 'HOME':
+        return <HomePage onNavigate={handleNavigate} />;
+      case 'LIVE':
+        return <LiveMatchesPage onOpenMatchCentre={(id) => handleNavigate('MATCH_CENTRE', id)} />;
+      case 'MATCH_CENTRE':
+        return <MatchCentrePage matchId={selectedParamId || 'match-1'} />;
+      default:
+        return (
+          <View style={styles.mainContainer}>
+            <View style={styles.tempPlaceholder}>
+              <Text style={styles.placeholderTitle}>REGAL CRICKET PLATFORM</Text>
+              <Text style={styles.placeholderRoute}>Active Route: {currentRoute}</Text>
+              {selectedParamId && <Text style={styles.placeholderParam}>ID: {selectedParamId}</Text>}
+              <Text style={{color: COLORS.textMuted, marginTop: 20}}>This screen is under construction.</Text>
+            </View>
+          </View>
+        );
+    }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
 
-      {/* District Header & Navigation */}
+      {/* Global Shell Header */}
       <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenScoringModal={() => setScoringModalVisible(true)}
+        currentRoute={currentRoute}
+        onNavigate={handleNavigate}
+        onOpenSearch={() => setSearchVisible(true)}
+        onOpenNotifications={() => setNotificationsVisible(true)}
+        onOpenAuth={() => setAuthVisible(true)}
+        onOpenScoringCentre={() => handleNavigate('SCORING_CENTRE')}
+        userRole={userRole}
       />
 
-      <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Top Scoreboard Hero Strip */}
-        <BroadcastBanner scoreData={scoreData} />
+      {/* Main Content Area */}
+      <View style={{ flex: 1 }}>
+        {renderContent()}
+      </View>
 
-        {/* Cockpit Grid */}
-        <View style={styles.mainCockpit}>
-          <View style={styles.gridContainer}>
-            {/* Left Column (Wagon Wheel & Zone Leaderboard) */}
-            <View style={styles.leftCol}>
-              <WagonWheelWidget />
-            </View>
+      {/* Global Footer */}
+      <Footer onNavigate={handleNavigate} />
 
-            {/* Right Column (Win Predictor, Chase Worm, H2H Battle) */}
-            <View style={styles.rightCol}>
-              <WinPredictorWidget />
-              <ChaseWormWidget />
-              <H2HBattleWidget />
-            </View>
-          </View>
+      {/* Mobile Navigation Bar */}
+      <MobileBottomNav
+        currentRoute={currentRoute}
+        onNavigate={handleNavigate}
+        onOpenMore={() => setSearchVisible(true)}
+      />
 
-          {/* Ball-by-ball Commentary Feed */}
-          <CommentaryFeed />
-        </View>
+      {/* Modals & Drawers */}
+      <GlobalSearchModal
+        visible={searchVisible}
+        onClose={() => setSearchVisible(false)}
+        onNavigate={handleNavigate}
+      />
 
-        {/* Footer */}
-        <Footer />
-      </ScrollView>
+      <NotificationDrawer
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
+      />
 
-      {/* Interactive Scorekeeper Modal */}
-      <ScoringModal
-        visible={scoringModalVisible}
-        onClose={() => setScoringModalVisible(false)}
-        onUpdateScore={handleUpdateScore}
+      <AuthModal
+        visible={authVisible}
+        onClose={() => setAuthVisible(false)}
+        currentRole={userRole}
+        onRoleChange={setUserRole}
       />
     </SafeAreaView>
   );
@@ -111,31 +107,37 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0E1C2F',
+    backgroundColor: COLORS.midnightNavy,
     paddingTop: Platform.OS === 'android' ? 30 : 0,
   },
-  scrollContent: {
+  mainContainer: {
     flex: 1,
-    backgroundColor: '#F9F9FF',
+    backgroundColor: COLORS.midnightNavy,
+    padding: 20,
   },
-  mainCockpit: {
-    maxWidth: 1360,
-    alignSelf: 'center',
-    width: '100%',
-    paddingHorizontal: 20,
-    paddingTop: 24,
+  tempPlaceholder: {
+    padding: 30,
+    backgroundColor: COLORS.midnightNavyCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.slateBorder,
+    alignItems: 'center',
+    marginVertical: 40,
   },
-  gridContainer: {
-    flexDirection: 'row',
-    gap: 20,
-    flexWrap: 'wrap',
+  placeholderTitle: {
+    color: COLORS.championshipGold,
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 8,
   },
-  leftCol: {
-    flex: 7,
-    minWidth: 320,
+  placeholderRoute: {
+    color: COLORS.warmWhite,
+    fontSize: 16,
+    fontWeight: '600',
   },
-  rightCol: {
-    flex: 5,
-    minWidth: 300,
+  placeholderParam: {
+    color: COLORS.slateTextMuted,
+    fontSize: 14,
+    marginTop: 4,
   },
 });
