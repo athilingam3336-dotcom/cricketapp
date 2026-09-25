@@ -16,6 +16,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from routes import teams, players
+
+app.include_router(teams.router, prefix="/api/teams", tags=["Teams"])
+app.include_router(players.router, prefix="/api/players", tags=["Players"])
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Regal Cricket API"}
